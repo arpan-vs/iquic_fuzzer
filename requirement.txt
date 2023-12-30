@@ -1,0 +1,5 @@
+pycrypto
+cryptography
+scapy
+donna25519
+peewee
