@@ -12,6 +12,13 @@ class SessionInstance:
     public_values_bytes = ""
     private_value = None
     chlo = ""
+    shlo = ""
+    tlschlo= b''
+    tlsshalo= b''
+    crypto_extensions = b''
+    crypto_cert = b''
+    crypto_certverify =b''
+    crypto_finished =b''
     scfg = ""
     cert_chain = ""
     cert_localhost = ""

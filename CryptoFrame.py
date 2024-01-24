@@ -23,12 +23,37 @@ from scapy.layers.tls.keyexchange_tls13 import (
 )
 from utils.SessionInstance import SessionInstance
 from utils.string_to_ascii import string_to_ascii
+from donna25519 import PrivateKey, PublicKey
+
+
+import certifi
+import service_identity
+from cryptography import x509
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes, hmac, serialization
+from cryptography.hazmat.primitives.asymmetric import (
+    dsa,
+    ec,
+    ed448,
+    ed25519,
+    padding,
+    rsa,
+    x448,
+    x25519,
+)
+from cryptography.hazmat.primitives.kdf.hkdf import HKDFExpand
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
+
+
 
 class CryptoFrame(Packet) :
     """
     The Crypto Frame 
     """
     name = "QUIC"
+    
     fields_desc =[
         XByteField("Frame_Type", 0x06),
         ByteField("Offset", 0),
@@ -38,7 +63,25 @@ class CryptoFrame(Packet) :
     # initial_packet_TlSObject
     def TLSObject() :
         ext2 = []
-        ext2 += TLS_Ext_KeyShare_CH(client_shares=[KeyShareEntry(group = "secp256r1"),KeyShareEntry(group = "x25519") ,KeyShareEntry(group = "x448") ],len= 167,client_shares_len=165 )
+
+        private_key = PrivateKey()
+        my_public_key = PublicKey((private_key.get_public()).public)
+
+        # x25519_private_key = x25519.X25519PrivateKey.generate()
+        # x25519_private = x25519_private_key
+        # x25519_public_key = x25519_private_key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
+
+        # # print("x25519_public_key:",bytes.hex(x25519_public_key))
+        
+        # SessionInstance.get_instance().public_value = x25519_private_key.public_key()
+        # SessionInstance.get_instance().public_values_bytes = x25519_public_key
+
+        # # print("My public key {}".format(SessionInstance.get_instance().public_values_bytes))
+        # # SessionInstance.get_instance().private_value = private_key.private
+        # # print("My private key {}".format(SessionInstance.get_instance().private_value ))
+        # # print("public value :" , bytes.hex(SessionInstance.get_instance().public_values_bytes))
+        ext2 += TLS_Ext_KeyShare_CH(client_shares=[KeyShareEntry(group = "x25519", kxlen = 32,key_exchange = SessionInstance.get_instance().public_values_bytes) ,KeyShareEntry(group = "secp256r1"),KeyShareEntry(group = "x448") ],len= 167,client_shares_len=165 )
+        # ext2 += TLS_Ext_KeyShare_CH(client_shares=[ KeyShareEntry(group = "x25519") ,KeyShareEntry(group = "secp256r1"),KeyShareEntry(group = "x448") ],len= 167,client_shares_len=165 )
         ext2 += TLS_Ext_SupportedVersion_CH(versions=["TLS 1.3"],len = 3,versionslen = 2)
         ext2 += TLS_Ext_SignatureAlgorithms(sig_algs=[0x0804, 0x0403,0x0401,0x0201,0x0807,0x0808],len = 14 ,sig_algs_len= 12)
         ext2 += TLS_Ext_SupportedGroups(groups = ["secp256r1", "x25519", "x448"] , len = 8, groupslen = 6)
@@ -70,7 +113,7 @@ class CryptoFrame(Packet) :
                 sid = None,
                 random_bytes=   secrets.token_bytes(32),
                 cipherslen= 6,
-                ciphers=[0x1301, 0x1302, 0x1303],
+                ciphers=[0x1302, 0x1301, 0x1303],
                 complen = 1,
                 comp = [0],
                 extlen = 326,
@@ -96,4 +139,8 @@ class QUIC_Ext_Transport_parameters(TLS_Ext_Unknown) :
                     #    LEShortField("len",None),
                     PacketListField("Parameters", [], Parameter,
                                     length_from=lambda pkt: pkt.len)] 
-   
+        
+
+
+
+
