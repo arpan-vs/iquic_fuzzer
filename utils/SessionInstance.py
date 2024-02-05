@@ -11,6 +11,8 @@ class SessionInstance:
     public_value = None # object
     public_values_bytes = ""
     private_value = None
+    client_initial_destination_connection_id = ""
+    shared_key = b''
     chlo = ""
     shlo = ""
     tlschlo= b''
@@ -19,6 +21,8 @@ class SessionInstance:
     crypto_cert = b''
     crypto_certverify =b''
     crypto_finished =b''
+    handshake_secret = b''
+    
     scfg = ""
     cert_chain = ""
     cert_localhost = ""

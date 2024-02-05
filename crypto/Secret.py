@@ -17,6 +17,8 @@ INITIAL_SALT_DRAFT_29 = binascii.unhexlify("afbfec289993d24c9e9786f19c6111e04390
 INITIAL_SALT_VERSION_1 = binascii.unhexlify("38762cf7f55934b34d179ae6a4c80cadccbb7f0a")
 import hashlib
 
+
+
 class secret_all:
 
     # initial_secret = HKDF-Extract(initial_salt, cid)        
@@ -68,7 +70,7 @@ class secret_all:
         hash_empty_value  = hashlib.sha256(b'').digest()
         handshake_hash = hashlib.sha384(binary_data).digest()
         key_material = bytes.fromhex("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
-
+        
         if cipher_suite in [
         CipherSuite.AES_256_GCM_SHA384,
         ]:
@@ -80,9 +82,7 @@ class secret_all:
             handshake_hash = hashlib.sha256(binary_data).digest()
             key_material = bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000000")
 
-        # print("handshake_hash" , bytes.hex(handshake_hash))
-        print(len(key_material))
-
+        print("\nhandshake_hash\n" , bytes.hex(handshake_hash))
         derived_secret = hkdf_expand_label(
             algorithm = algorithm,
             secret= handshake_secret,
@@ -90,37 +90,33 @@ class secret_all:
             hash_value = hash_empty_value, 
             length = algorithm.digest_size,
             )
-       
 
         master_secret = hkdf_extract( 
             algorithm = algorithm,
             salt= derived_secret, 
-            key_material = key_material)
+            key_material =key_material)
     
-       
         server_ap_secret = hkdf_expand_label(
             algorithm = algorithm,
             secret= master_secret, 
             label=  b"s ap traffic",  
-            hash_value= bytes.fromhex("75d42b78281057895817feb3416195d3bc8d67de0a6ed3ad76b01782ef399f5baea95cad0a44e0ebca65a9d72868ecee"), 
+            hash_value= handshake_hash, 
             length = algorithm.digest_size)
-        
-        print("hand KEY ", bytes.hex(hkdf_expand_label(algorithm, server_ap_secret, b"quic key", b"", 16)))
+
         return server_ap_secret
     
-    def nth_secret(cipher_suite: CipherSuite, shared_key) :
+    def nth_secret(cipher_suite: CipherSuite, shared_key , lable) :
 
         algorithm = cipher_suite_hash(cipher_suite)
-
         binary_data = b''
         binary_data += SessionInstance.get_instance().tlschlo
         binary_data += SessionInstance.get_instance().tlsshalo
-        
         hash_empty_value  = hashlib.sha256(b'').digest()
         hello_hash = hashlib.sha384(binary_data).digest()
         salt = bytes.fromhex("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
         key_material = bytes.fromhex("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 
+        
         if cipher_suite in [
         CipherSuite.AES_256_GCM_SHA384,
         ]:
@@ -134,7 +130,6 @@ class secret_all:
             salt = bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000000")
             key_material = bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000000")
         
-        print("handshake_hash" , bytes.hex(hello_hash))
         early_secret = hkdf_extract(
             algorithm = algorithm, 
             salt = salt, 
@@ -153,14 +148,43 @@ class secret_all:
             algorithm = algorithm,
             salt= derived_secret, 
             key_material = shared_key)
-       
+        
+        SessionInstance.get_instance().handshake_secret = handshake_secret
+
         server_secret = hkdf_expand_label(
             algorithm = algorithm,
             secret= handshake_secret, 
-            label=  b"s hs traffic",  
+            label=  lable,  
             hash_value= hello_hash, 
             length = algorithm.digest_size)
-        print("hand KEY ", bytes.hex(hkdf_expand_label(algorithm, server_secret, b"quic key", b"", 16)))
         return server_secret
     
-    
+    def finished_verify_data(cipher_suite: CipherSuite ,client_secret)  :
+        
+        '''finished_key = HKDF-Expand-Label(key: client_secret, label: "finished", ctx: "", len: 32)
+        finished_hash = SHA256(ClientHello ... ServerFinished)
+        verify_data = HMAC-SHA256(key: finished_key, msg: finished_hash)'''
+        algorithm = cipher_suite_hash(cipher_suite)
+        
+        finished_key = hkdf_expand_label(
+            algorithm = algorithm,
+            secret= client_secret,
+            label=  b"finished",
+            hash_value= b"",
+            length = 32
+        )
+
+        binary_data = b''
+        binary_data += SessionInstance.get_instance().tlschlo
+        binary_data += SessionInstance.get_instance().tlsshalo
+        binary_data += SessionInstance.get_instance().crypto_extensions
+        binary_data += SessionInstance.get_instance().crypto_cert
+        binary_data += SessionInstance.get_instance().crypto_certverify
+        binary_data += SessionInstance.get_instance().crypto_finished
+        
+        finished_hash = hashlib.sha256(binary_data).digest()
+
+        h = hmac.HMAC(finished_key, algorithm=algorithm)
+        h.update(finished_hash)
+        return h.finalize()
+
