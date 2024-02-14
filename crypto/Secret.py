@@ -58,7 +58,6 @@ class secret_all:
     def ap_secret(cipher_suite: CipherSuite, handshake_secret ) :
 
         algorithm = cipher_suite_hash(cipher_suite)
-
         binary_data = b''
         binary_data += SessionInstance.get_instance().tlschlo
         binary_data += SessionInstance.get_instance().tlsshalo
@@ -81,8 +80,7 @@ class secret_all:
             hash_empty_value  = hashlib.sha256(b'').digest()
             handshake_hash = hashlib.sha256(binary_data).digest()
             key_material = bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000000")
-
-        print("\nhandshake_hash\n" , bytes.hex(handshake_hash))
+        
         derived_secret = hkdf_expand_label(
             algorithm = algorithm,
             secret= handshake_secret,
@@ -105,7 +103,7 @@ class secret_all:
 
         return server_ap_secret
     
-    def nth_secret(cipher_suite: CipherSuite, shared_key , lable) :
+    def handshake_secret(cipher_suite: CipherSuite, shared_key , lable) :
 
         algorithm = cipher_suite_hash(cipher_suite)
         binary_data = b''
@@ -160,10 +158,6 @@ class secret_all:
         return server_secret
     
     def finished_verify_data(cipher_suite: CipherSuite ,client_secret)  :
-        
-        '''finished_key = HKDF-Expand-Label(key: client_secret, label: "finished", ctx: "", len: 32)
-        finished_hash = SHA256(ClientHello ... ServerFinished)
-        verify_data = HMAC-SHA256(key: finished_key, msg: finished_hash)'''
         algorithm = cipher_suite_hash(cipher_suite)
         
         finished_key = hkdf_expand_label(
