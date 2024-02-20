@@ -10,7 +10,7 @@ class QUICHeader(Packet):
     The header for the QUIC CH packet
     Taken from Wireshark capture example
     """
-    name = "QUIC"
+    name = "QUICInitialHeader"
     fields_desc = [
         XByteField("Public_Flags", 0xc1),
         StrFixedLenField("Version", string_to_ascii("00000001"),4),
@@ -24,11 +24,8 @@ class QUICHeader(Packet):
     ]
 
 class QUICHandshakeHeader(Packet):
-    """
-    The header for the QUIC CH packet
-    Taken from Wireshark capture example
-    """
-    name = "QUIC"
+    
+    name = "QUICHandshakeHeader"
     fields_desc = [
         XByteField("Public_Flags", 0xc1),
         StrFixedLenField("Version", string_to_ascii("00000001"),4),
@@ -38,6 +35,15 @@ class QUICHandshakeHeader(Packet):
         StrFixedLenField("SCID",string_to_ascii("2d35022d62b561f2"),8),
         StrFixedLenField("Length",bytes.fromhex("4496"),2),
         LEShortField("Packet_Number",0),
+    ]
+
+class QUICShortHeader(Packet) :
+
+    name = "QUICShortHeader"
+    fields_desc = [
+        XByteField("Public_Flags", 0x41),
+        StrFixedLenField("DCID",string_to_ascii("6bafa3cda6256d3c"),8),
+        StrFixedLenField("Packet_Number",string_to_ascii("0000"),2),
     ]
 
 

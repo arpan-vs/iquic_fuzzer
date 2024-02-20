@@ -19,7 +19,7 @@ import hashlib
 
 
 
-class secret_all:
+class dhke:
 
     # initial_secret = HKDF-Extract(initial_salt, cid)        
     @staticmethod
@@ -37,7 +37,7 @@ class secret_all:
     def client_initial_secret() :
         client_initial_secret = hkdf_expand_label(
             algorithm = hashes.SHA256(),
-            secret = secret_all.initial_secret(string_to_ascii(SessionInstance.get_instance().initial_destination_connection_id)),
+            secret = dhke.initial_secret(string_to_ascii(SessionInstance.get_instance().initial_destination_connection_id)),
             label=b"client in",
             hash_value=b"",
             length = 32,
@@ -48,14 +48,14 @@ class secret_all:
     def server_initial_secret() :
         server_initial_secret = hkdf_expand_label(
             algorithm = hashes.SHA256(),
-            secret = secret_all.initial_secret(string_to_ascii(SessionInstance.get_instance().initial_destination_connection_id)),
+            secret = dhke.initial_secret(string_to_ascii(SessionInstance.get_instance().initial_destination_connection_id)),
             label=b"server in",
             hash_value=b"",
             length = 32,
             )
         return server_initial_secret 
     
-    def ap_secret(cipher_suite: CipherSuite, handshake_secret ) :
+    def ap_secret(cipher_suite: CipherSuite, handshake_secret , label) :
 
         algorithm = cipher_suite_hash(cipher_suite)
         binary_data = b''
@@ -97,7 +97,7 @@ class secret_all:
         server_ap_secret = hkdf_expand_label(
             algorithm = algorithm,
             secret= master_secret, 
-            label=  b"s ap traffic",  
+            label= label,  
             hash_value= handshake_hash, 
             length = algorithm.digest_size)
 
@@ -165,7 +165,7 @@ class secret_all:
             secret= client_secret,
             label=  b"finished",
             hash_value= b"",
-            length = 32
+            length = algorithm.digest_size
         )
 
         binary_data = b''
@@ -176,8 +176,15 @@ class secret_all:
         binary_data += SessionInstance.get_instance().crypto_certverify
         binary_data += SessionInstance.get_instance().crypto_finished
         
-        finished_hash = hashlib.sha256(binary_data).digest()
+        
+        if cipher_suite in [
+        CipherSuite.AES_256_GCM_SHA384,
+        ]:
+            finished_hash = hashlib.sha384(binary_data).digest()
+        else : 
+            finished_hash = hashlib.sha256(binary_data).digest()
 
+        print("finsh_hash" , bytes.hex(finished_hash))
         h = hmac.HMAC(finished_key, algorithm=algorithm)
         h.update(finished_hash)
         return h.finalize()

@@ -22,7 +22,8 @@ class SessionInstance:
     crypto_certverify =b''
     crypto_finished =b''
     handshake_secret = b''
-    
+    client_appliction_traffic_secret= b''
+    server_appliction_traffic_secret= b''
     scfg = ""
     cert_chain = ""
     cert_localhost = ""
