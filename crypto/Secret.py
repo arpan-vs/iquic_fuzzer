@@ -17,44 +17,40 @@ INITIAL_SALT_DRAFT_29 = binascii.unhexlify("afbfec289993d24c9e9786f19c6111e04390
 INITIAL_SALT_VERSION_1 = binascii.unhexlify("38762cf7f55934b34d179ae6a4c80cadccbb7f0a")
 import hashlib
 
+from cryptography.hazmat.primitives.asymmetric import (
+    x25519,
+)
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 
 class dhke:
 
-    # initial_secret = HKDF-Extract(initial_salt, cid)        
-    @staticmethod
-    def initial_secret(DCID = "6bafa3cda6256d3c"):
-        initial_salt = INITIAL_SALT_VERSION_1  #initial salt is fix (Ref:- RFC 9001 => 5.2)
-        initial_secret = hkdf_extract(
-                algorithm = hashes.SHA256(),
-                salt = initial_salt,
-                key_material = DCID)
-        return initial_secret
+    def set_up_my_keys() :
+        #PUB and Privete key generate 
+        _x25519_private_key = x25519.X25519PrivateKey.generate()
+        SessionInstance.get_instance().public_values_bytes = _x25519_private_key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
+        SessionInstance.get_instance().private_value = _x25519_private_key
+    
+    def shared_key_computation(server_public_key : bytes ) :
+        private_key = SessionInstance.get_instance().private_value  # client private key 
+        shared_key = private_key.exchange(x25519.X25519PublicKey.from_public_bytes(server_public_key)) 
+        SessionInstance.get_instance().shared_key = shared_key 
+        # print("SessionInstance.get_instance().shared_key",bytes.hex(SessionInstance.get_instance().shared_key))
+
+    def handshake_traffic_computation() :
+        SessionInstance.get_instance().server_handshake_traffic_secret =  dhke.handshake_secret(cipher_suite = 0x1302,shared_key = SessionInstance.get_instance().shared_key, lable = b"s hs traffic",isClient = False)
+        # print("SessionInstance.get_instance().server_handshake_traffic_secret",bytes.hex(SessionInstance.get_instance().server_handshake_traffic_secret))
+        SessionInstance.get_instance().client_handshake_traffic_secret =  dhke.handshake_secret(cipher_suite = 0x1302,shared_key = SessionInstance.get_instance().shared_key, lable = b"c hs traffic",isClient = True)
+        # print("SessionInstance.get_instance().client_handshake_traffic_secret",bytes.hex(SessionInstance.get_instance().client_handshake_traffic_secret))
+
+   
+    def appliction_traffic_computation() :
+        SessionInstance.get_instance().server_appliction_traffic_secret =  dhke.ap_secret(cipher_suite = 0x1302, handshake_secret = SessionInstance.get_instance().server_handshake_secret , label=  b"s ap traffic")
+        # print("SessionInstance.get_instance().server_appliction_traffic_secret",bytes.hex(SessionInstance.get_instance().server_appliction_traffic_secret))
+        SessionInstance.get_instance().client_appliction_traffic_secret =  dhke.ap_secret(cipher_suite = 0x1302, handshake_secret = SessionInstance.get_instance().client_handshake_secret , label=  b"c ap traffic")
+        # print("SessionInstance.get_instance().client_appliction_traffic_secret",bytes.hex(SessionInstance.get_instance().client_appliction_traffic_secret))
 
 
-    # client_initial_secret  = HKDF-Expand-Label(initial_secret, "client in", "", 32)
-    @staticmethod
-    def client_initial_secret() :
-        client_initial_secret = hkdf_expand_label(
-            algorithm = hashes.SHA256(),
-            secret = dhke.initial_secret(string_to_ascii(SessionInstance.get_instance().initial_destination_connection_id)),
-            label=b"client in",
-            hash_value=b"",
-            length = 32,
-            )
-        return client_initial_secret
-    
-    # server_initial_secret  = HKDF-Expand-Label(initial_secret, "server in", "", 32)
-    def server_initial_secret() :
-        server_initial_secret = hkdf_expand_label(
-            algorithm = hashes.SHA256(),
-            secret = dhke.initial_secret(string_to_ascii(SessionInstance.get_instance().initial_destination_connection_id)),
-            label=b"server in",
-            hash_value=b"",
-            length = 32,
-            )
-        return server_initial_secret 
-    
     def ap_secret(cipher_suite: CipherSuite, handshake_secret , label) :
 
         algorithm = cipher_suite_hash(cipher_suite)
@@ -103,7 +99,7 @@ class dhke:
 
         return server_ap_secret
     
-    def handshake_secret(cipher_suite: CipherSuite, shared_key , lable) :
+    def handshake_secret(cipher_suite: CipherSuite, shared_key , lable , isClient) :
 
         algorithm = cipher_suite_hash(cipher_suite)
         binary_data = b''
@@ -147,7 +143,9 @@ class dhke:
             salt= derived_secret, 
             key_material = shared_key)
         
-        SessionInstance.get_instance().handshake_secret = handshake_secret
+        if isClient  :
+            SessionInstance.get_instance().client_handshake_secret = handshake_secret
+        else :  SessionInstance.get_instance().server_handshake_secret = handshake_secret
 
         server_secret = hkdf_expand_label(
             algorithm = algorithm,
@@ -184,7 +182,7 @@ class dhke:
         else : 
             finished_hash = hashlib.sha256(binary_data).digest()
 
-        print("finsh_hash" , bytes.hex(finished_hash))
+        # print("finsh_hash" , bytes.hex(finished_hash))
         h = hmac.HMAC(finished_key, algorithm=algorithm)
         h.update(finished_hash)
         return h.finalize()

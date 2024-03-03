@@ -43,7 +43,7 @@ class QUICShortHeader(Packet) :
     fields_desc = [
         XByteField("Public_Flags", 0x41),
         StrFixedLenField("DCID",string_to_ascii("6bafa3cda6256d3c"),8),
-        StrFixedLenField("Packet_Number",string_to_ascii("0000"),2),
+        StrFixedLenField("Packet_Number",0,2),
     ]
 
 

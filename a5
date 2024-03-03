@@ -1,0 +1,53 @@
+digraph "Automata" {
+"0" [shape=doubleoctagon, style=filled, fillcolor=white, URL="0"];
+"1" [shape=ellipse, style=filled, fillcolor=white, URL="1"];
+"7" [shape=ellipse, style=filled, fillcolor=white, URL="7"];
+"5" [shape=ellipse, style=filled, fillcolor=white, URL="5"];
+"6" [shape=ellipse, style=filled, fillcolor=white, URL="6"];
+"4" [shape=ellipse, style=filled, fillcolor=white, URL="4"];
+"2" [shape=ellipse, style=filled, fillcolor=white, URL="2"];
+"3" [shape=ellipse, style=filled, fillcolor=white, URL="3"];
+"0" -> "1" [fontsize=5, label="Clinet_Hello / Sever_Hello, Handshake, Appliction_data", URL="t0"];
+"0" -> "0" [fontsize=5, label="Clinet_FIN / EXP", URL="t1"];
+"0" -> "0" [fontsize=5, label="GET / EXP", URL="t2"];
+"0" -> "0" [fontsize=5, label="CLOSE / EXP", URL="t3"];
+"1" -> "1" [fontsize=5, label="Clinet_Hello / Sever_Hello, Handshake, Appliction_data", URL="t4"];
+"1" -> "2" [fontsize=5, label="Clinet_FIN / handshakedone", URL="t5"];
+"1" -> "7" [fontsize=5, label="GET / EXP", URL="t6"];
+"1" -> "0" [fontsize=5, label="CLOSE / EXP", URL="t7"];
+"7" -> "4" [fontsize=5, label="Clinet_Hello / EXP", URL="t28"];
+"7" -> "5" [fontsize=5, label="Clinet_FIN / handshakedone", URL="t29"];
+"7" -> "7" [fontsize=5, label="GET / EXP", URL="t30"];
+"7" -> "7" [fontsize=5, label="CLOSE / EXP", URL="t31"];
+"5" -> "4" [fontsize=5, label="Clinet_Hello / EXP", URL="t20"];
+"5" -> "5" [fontsize=5, label="Clinet_FIN / ERROR", URL="t21"];
+"5" -> "6" [fontsize=5, label="GET / EXP", URL="t22"];
+"5" -> "6" [fontsize=5, label="CLOSE / CLOSED", URL="t23"];
+"6" -> "1" [fontsize=5, label="Clinet_Hello / Sever_Hello, Handshake, Appliction_data", URL="t24"];
+"6" -> "6" [fontsize=5, label="Clinet_FIN / ERROR", URL="t25"];
+"6" -> "6" [fontsize=5, label="GET / EXP", URL="t26"];
+"6" -> "6" [fontsize=5, label="CLOSE / CLOSED", URL="t27"];
+"4" -> "4" [fontsize=5, label="Clinet_Hello / EXP", URL="t16"];
+"4" -> "4" [fontsize=5, label="Clinet_FIN / EXP", URL="t17"];
+"4" -> "4" [fontsize=5, label="GET / EXP", URL="t18"];
+"4" -> "4" [fontsize=5, label="CLOSE / EXP", URL="t19"];
+"2" -> "1" [fontsize=5, label="Clinet_Hello / Sever_Hello, Handshake, Appliction_data", URL="t8"];
+"2" -> "2" [fontsize=5, label="Clinet_FIN / ERROR", URL="t9"];
+"2" -> "3" [fontsize=5, label="GET / HTTP", URL="t10"];
+"2" -> "6" [fontsize=5, label="CLOSE / CLOSED", URL="t11"];
+"3" -> "4" [fontsize=5, label="Clinet_Hello / EXP", URL="t12"];
+"3" -> "3" [fontsize=5, label="Clinet_FIN / ERROR", URL="t13"];
+"3" -> "2" [fontsize=5, label="GET / HTTP", URL="t14"];
+"3" -> "5" [fontsize=5, label="CLOSE / CLOSED", URL="t15"];
+}
+
+
+==> QUIC machine Automata dumped in a5
+
+Knowledge base stats: 
+	- nb query= 160
+	- nb submited query= 132
+	- nb letter= 708
+	- nb submited letter= 596
+
+==> Taken Time:65.33847761154175

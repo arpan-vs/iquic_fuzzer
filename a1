@@ -1,0 +1,21 @@
+digraph "Automata" {
+"0" [shape=doubleoctagon, style=filled, fillcolor=white, URL="0"];
+"1" [shape=ellipse, style=filled, fillcolor=white, URL="1"];
+"0" -> "1" [fontsize=5, label="ICHLO / ISHLO", URL="t0"];
+"0" -> "0" [fontsize=5, label="GET / ERROR", URL="t1"];
+"0" -> "0" [fontsize=5, label="CLOSE / ERROR", URL="t2"];
+"1" -> "1" [fontsize=5, label="ICHLO / EXP", URL="t3"];
+"1" -> "1" [fontsize=5, label="GET / ERROR", URL="t4"];
+"1" -> "1" [fontsize=5, label="CLOSE / ERROR", URL="t5"];
+}
+
+
+==> QUIC machine Automata dumped in a1
+
+Knowledge base stats: 
+	- nb query= 24
+	- nb submited query= 21
+	- nb letter= 54
+	- nb submited letter= 48
+
+==> Taken Time:1.7968449592590332

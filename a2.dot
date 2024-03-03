@@ -1,0 +1,23 @@
+digraph "Automata" {
+"0" [shape=doubleoctagon, style=filled, fillcolor=white, URL="0"];
+"1" [shape=ellipse, style=filled, fillcolor=white, URL="1"];
+"0" -> "1" [fontsize=5, label="Clinet_Hello / Sever_Hello, Handshake, Appliction_data", URL="t0"];
+"0" -> "0" [fontsize=5, label="Clinet_FIN / ERROR", URL="t1"];
+"0" -> "0" [fontsize=5, label="GET / HTTP", URL="t2"];
+"0" -> "0" [fontsize=5, label="CLOSE / ERROR", URL="t3"];
+"1" -> "1" [fontsize=5, label="Clinet_Hello / Sever_Hello, Handshake, Appliction_data", URL="t4"];
+"1" -> "1" [fontsize=5, label="Clinet_FIN / handshakedone", URL="t5"];
+"1" -> "0" [fontsize=5, label="GET / HTTP", URL="t6"];
+"1" -> "1" [fontsize=5, label="CLOSE / ERROR", URL="t7"];
+}
+
+
+==> QUIC machine Automata dumped in a2.dot
+
+Knowledge base stats: 
+	- nb query= 40
+	- nb submited query= 36
+	- nb letter= 92
+	- nb submited letter= 84
+
+==> Taken Time:2.0330746173858643
