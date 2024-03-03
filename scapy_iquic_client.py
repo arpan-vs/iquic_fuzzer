@@ -2,7 +2,7 @@
 import QUICHeader
 import socket
 from utils.string_to_ascii import string_to_ascii
-from utils.packet_to_hex import extract_from_packet, extract_from_packet_as_bytestring
+from utils.packet_to_hex import extract_from_packet, extract_from_packet_as_bytestring, hex_to_binary
 import random
 from utils.SessionInstance import SessionInstance
 from utils.PacketNumberInstance import PacketNumberInstance
@@ -121,7 +121,10 @@ class QUIC :
         try :
            
             # receive -> Initial[0] : crypato(SH)
-            datarev_1 = self.UDPClientSocket.recv(1300) 
+            datarev_1 = self.UDPClientSocket.recv(1300)
+            while hex_to_binary(bytes.hex(datarev_1[0:1]))[2:4] != "00" :
+                datarev_1 = self.UDPClientSocket.recv(1300) 
+                if(hex_to_binary(bytes.hex(datarev_1[0:1]))[2:4] == "00") : break 
              
             server_initial = datarev_1[:144]  #Initial[0] : crypato(SH)
             server_handshake_1 = datarev_1[144:] #handshake[0] : crypato(EE)
@@ -233,16 +236,21 @@ class QUIC :
         ackFrame_handshake = ACKFrame()
         ackFrame_handshake.setfieldval("Largest_Acknowledged",1)
         ackFrame_handshake.setfieldval("ACK_delay",bytes.fromhex("42d3"))
-       
 
-        handshake_clinet_ACK = bytes.fromhex(extract_from_packet_as_bytestring(ackFrame_handshake)  )
+        #acknowledgement for Server handshake[0] 
+        _ackFrame_handshake = ACKFrame()
+        _ackFrame_handshake.setfieldval("Largest_Acknowledged",2)
+        _ackFrame_handshake.setfieldval("ACK_delay",bytes.fromhex("42d3"))
+
+        handshake_clinet_ACK = bytes.fromhex(extract_from_packet_as_bytestring(ackFrame_handshake) + extract_from_packet_as_bytestring(_ackFrame_handshake))
         handshake_header = bytes.fromhex(extract_from_packet_as_bytestring(handshake_client_ACK_header))
        
         self.crypto_context.setup(cipher_suite = 0x1302,secret =  SessionInstance.get_instance().client_handshake_traffic_secret ,version = 1)
         handshake_clinet_data = self.crypto_context.encrypt_packet(handshake_header,handshake_clinet_ACK,2)
 
+        
         #send ACK Packet from client -> server 
-        self.UDPClientSocket.sendto((initial_clinet_data + handshake_clinet_data ) , (ip, DPORT))
+        self.UDPClientSocket.sendto((initial_clinet_data + handshake_clinet_data  ) , (ip, DPORT))
 
 
     def send_finish(self):
@@ -538,8 +546,6 @@ class QUIC :
 s = QUIC("localhost")
 print(s.initial_chlo(True))
 print(s.send_finish())
+print(s.Send_application_header())
+print(s.Send_application_header())
 print(s.connection_close())
-print(s.initial_chlo(True))
-print(s.initial_chlo(True))
-# print(s.Send_application_header())
-# print(s.connection_close())
