@@ -20,7 +20,7 @@ If there are no wheels for your system or if you wish to build ``aioquic``
 from source you will need the OpenSSL development headers.
 
 Linux
-.....
+--------------------
 
 On Debian/Ubuntu run:
 
