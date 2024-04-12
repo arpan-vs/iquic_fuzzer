@@ -6,6 +6,7 @@ from cryptography.hazmat.primitives import hashes
 
 from utils.string_to_ascii import string_to_ascii
 from utils.SessionInstance import SessionInstance
+from utils.packet_to_hex import  extract_from_packet, extract_from_packet_as_bytestring, hex_to_binary,hex_to_decimal
 from typing import Callable, Optional, Tuple
 from aioquic.quic.crypto import hkdf_extract,hkdf_expand_label,cipher_suite_hash , CipherSuite
 from donna25519 import PrivateKey, PublicKey
@@ -21,7 +22,7 @@ from cryptography.hazmat.primitives.asymmetric import (
     x25519,
 )
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-
+from aioquic.quic.crypto import CryptoContext,CryptoPair
 
 class dhke:
 
@@ -186,4 +187,53 @@ class dhke:
         h = hmac.HMAC(finished_key, algorithm=algorithm)
         h.update(finished_hash)
         return h.finalize()
+    
+    def get_early_secret() :
+        
+        algorithm = cipher_suite_hash(0x1301) 
+        salt = bytes.fromhex("0"*32)
+        key_material = bytes.fromhex("0"*32)
+
+        early_secret = hkdf_extract(
+            algorithm = algorithm, 
+            salt = salt, 
+            key_material = key_material
+        )
+        return early_secret
+
+
+class Crypto :
+
+    def __init__(self) -> None:
+        self.cryptopair = CryptoPair()  
+        self.crypto_context = CryptoContext()
+    
+    def decrypt_initial_packet(self, packet: bytes)-> Tuple[bytes, bytes, int]:
+        plain_header, payload, packet_number = self.cryptopair.decrypt_packet(packet,(len(packet)- hex_to_decimal(extract_from_packet_as_bytestring(packet[24:26])[1:])),0)
+        return plain_header, payload, packet_number
+
+    def encrypt_initial_packet(self, plain_header: bytes, plain_payload: bytes, packet_number: int)-> bytes:
+        self.cryptopair.setup_initial(string_to_ascii(SessionInstance.get_instance().initial_destination_connection_id),True,1)
+        payload = self.cryptopair.encrypt_packet(plain_header,plain_payload,packet_number)
+        return payload
+    
+    def decrypt_handshake_packet(self, packet: bytes)-> Tuple[bytes, bytes, int]:
+        self.crypto_context.setup(cipher_suite = 0x1302, secret = SessionInstance.get_instance().server_handshake_traffic_secret, version = 1)
+        plain_header, payload, packet_number, crypto = self.crypto_context.decrypt_packet(packet,(len(packet)- hex_to_decimal(extract_from_packet_as_bytestring(packet[23:25])[1:])),0)
+        return plain_header, payload, packet_number
+
+    def encrypt_handshake_packet(self, plain_header: bytes, plain_payload: bytes)-> bytes:
+        self.crypto_context.setup(cipher_suite = 0x1302,secret =  SessionInstance.get_instance().client_handshake_traffic_secret ,version = 1)
+        payload = self.crypto_context.encrypt_packet(plain_header,plain_payload,hex_to_decimal(extract_from_packet_as_bytestring(plain_header)[-4:]))
+        return payload
+    
+    def decrypt_application_packet(self, packet: bytes)-> Tuple[bytes, bytes, int]:
+        self.crypto_context.setup(cipher_suite = 0x1302,secret =  SessionInstance.get_instance().server_appliction_traffic_secret  ,version = 1)
+        plain_header, payload, packet_number, crypto = self.crypto_context.decrypt_packet(packet,9,0)
+        return plain_header, payload, packet_number
+    
+    def encrypt_application_packet(self, plain_header: bytes, plain_payload: bytes)-> bytes:
+        self.crypto_context.setup(cipher_suite = 0x1302,secret =  SessionInstance.get_instance().client_appliction_traffic_secret ,version = 1)
+        payload = self.crypto_context.encrypt_packet(plain_header,plain_payload,hex_to_decimal(extract_from_packet_as_bytestring(plain_header)[-4:]))
+        return payload
 

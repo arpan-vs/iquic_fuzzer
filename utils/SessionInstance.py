@@ -28,6 +28,7 @@ class SessionInstance:
     client_appliction_traffic_secret= b''
     server_appliction_traffic_secret= b''
     handshake_done = False
+    randome_value = b''
 
     scfg = ""
     cert_chain = ""

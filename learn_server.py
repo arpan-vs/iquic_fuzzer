@@ -25,7 +25,7 @@ def main():
         exit(0)
     if sys.argv[1] == "localhost":
         server = 1
-    # elif sys.argv[1] == "www.litespeedtech.com":
+    # elif: sys.argv[1] == "www.litespeedtech.com":
     else:
         server = 0
         # print("Enter correct Active Server!!!\nExample: localhost or www.litespeedtech.com")
@@ -39,19 +39,9 @@ def main():
 
     input_vocabulary = [
         "Clinet_Hello",
-        # "FullCHLO",
         "Clinet_FIN",
         "GET",
-        # "ZeroRTT",
-        # "Emp
-        # tyCertHashZeroRTT",
-        # "EmptyCertHashFullCHLO",
         "CLOSE",
-        # "InvalidInitialCHLO",
-        # "InvalidFullCHLO",
-        # "InvalidGET",
-        # "InvalidZeroRTT",
-        # "InvalidCLOSE",
     ]
 
 

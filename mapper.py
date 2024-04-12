@@ -21,7 +21,7 @@ def QuicInputMapper(alphabet, s):
 
 def QuicOutputMapper(data):
     output = ""
-    if data == b"Server_HelloHandshakeappliction_data":
+    if data == b"Sever_HelloHandshakeappliction_data":
         output = "Sever_Hello, Handshake, Appliction_data"
     elif data == b"push_promiseApplication_headerHTML" :
         output = "push_promise, Application_header, HTTP3 "

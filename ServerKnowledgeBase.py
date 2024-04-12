@@ -39,11 +39,11 @@ class QUICServerKnowledgeBase(ActiveKnowledgeBase):
 
     def submit_word(self, word):
 
-        # if self.server==1:
-        #     from socket_gquic_43 import Scapy
-        # else:
-        #     from socket_gquic_43_litespeed import Scapy
-        from scapy_iquic_client import QUIC
+        if self.server==1:
+            from scapy_iquic_client import QUIC
+        else:
+            from scapy_iquic_Online import QUIC
+        
 
         # self._logger.debug("Submiting word '{}' to the network target".format(word))
 
@@ -54,12 +54,10 @@ class QUICServerKnowledgeBase(ActiveKnowledgeBase):
         print("-"*100)
         # s = socket.socket()
 
-        # if self.server==1:
-        #     s = Scapy("localhost")
-        # else:
-        #     s = Scapy(self.server_name)
-
-        s = QUIC("localhost")
+        if self.server==1:
+            s = QUIC("localhost")
+        else:
+            s = QUIC(self.server_name)
 
         # # Reuse the connection
         # s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

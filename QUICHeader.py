@@ -24,8 +24,8 @@ class QUICHeader(Packet):
     ]
 
 class QUICHandshakeHeader(Packet):
-    
-    name = "QUICHandshakeHeader"
+ 
+    name = "QUICLongHeader"
     fields_desc = [
         XByteField("Public_Flags", 0xc1),
         StrFixedLenField("Version", string_to_ascii("00000001"),4),

@@ -7,10 +7,10 @@ digraph "Automata" {
 "0" -> "0" [fontsize=5, label="Clinet_FIN / EXP", URL="t1"];
 "0" -> "0" [fontsize=5, label="GET / EXP", URL="t2"];
 "0" -> "0" [fontsize=5, label="CLOSE / EXP", URL="t3"];
-"1" -> "0" [fontsize=5, label="Clinet_Hello / Sever_Hello, Handshake, Appliction_data", URL="t4"];
+"1" -> "1" [fontsize=5, label="Clinet_Hello / Sever_Hello, Handshake, Appliction_data", URL="t4"];
 "1" -> "2" [fontsize=5, label="Clinet_FIN / handshakedone", URL="t5"];
-"1" -> "0" [fontsize=5, label="GET / EXP", URL="t6"];
-"1" -> "0" [fontsize=5, label="CLOSE / EXP", URL="t7"];
+"1" -> "1" [fontsize=5, label="GET / EXP", URL="t6"];
+"1" -> "1" [fontsize=5, label="CLOSE / EXP", URL="t7"];
 "2" -> "1" [fontsize=5, label="Clinet_Hello / Sever_Hello, Handshake, Appliction_data", URL="t8"];
 "2" -> "2" [fontsize=5, label="Clinet_FIN / ERROR", URL="t9"];
 "2" -> "2" [fontsize=5, label="GET / HTTP", URL="t10"];
@@ -22,7 +22,7 @@ digraph "Automata" {
 }
 
 
-==> QUIC machine Automata dumped in a7
+==> QUIC machine Automata dumped in a117
 
 Knowledge base stats: 
 	- nb query= 80
@@ -30,4 +30,4 @@ Knowledge base stats:
 	- nb letter= 264
 	- nb submited letter= 228
 
-==> Taken Time:37.08374261856079
+==> Taken Time:176.18748807907104

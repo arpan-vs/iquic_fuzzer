@@ -33,3 +33,6 @@ def extract_from_packet_as_bytestring(x, start=0, end=0):
 def hex_to_binary(hex_number):
     binary_number = bin(int(hex_number, 16))[2:]
     return binary_number
+
+def hex_to_decimal(hex_number) :
+    return int(hex_number, 16)
