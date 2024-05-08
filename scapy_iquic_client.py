@@ -1,4 +1,5 @@
 
+import re
 import QUICHeader
 import socket
 from utils.string_to_ascii import string_to_ascii
@@ -7,20 +8,20 @@ import random
 from utils.SessionInstance import SessionInstance
 from utils.PacketNumberInstance import PacketNumberInstance
 from crypto.Secret import dhke, Crypto
-from CryptoFrame import CryptoFrame ,ACKFrame
+from CryptoFrame import CryptoFrame ,ACKFrame,ACKFrameModify,TLSFinish
 from events.Events import SendInitialCHLOEvent, SendGETRequestEvent, CloseConnectionEvent,SendFINEvent
 
-from scapy.layers.tls.handshake import TLSFinished
+# from scapy.layers.tls.handshake import TLSFinished
 from crypto.Frame import new_connection_id, quic_stream, quic_offset_stream ,quic_connection_closed
 from aioquic.quic.packet import QuicStreamFrame  
-from aioquic.quic.stream import QuicStream  
+from aioquic.quic.stream import QuicStream 
 import os
 import qpack 
-
+from aioquic.quic.crypto import CryptoContext,CryptoPair
 # https://quic.aiortc.org:443
 DPORT = 4433
 # DPORT = 4433
-ip ="127.0.0.3"
+ip ="127.0.0.1"
 
 # DPORT = 443
 # ip ="34.247.195.106"
@@ -31,6 +32,8 @@ class QUIC :
     def __init__(self,s) -> None:
 
         self.crypto = Crypto()
+        self.cryptoContext = CryptoContext()
+        self.crypto_pair = CryptoPair()   
         # set Destination conncetion id 
         destination_id = random.getrandbits(64)
         SessionInstance.get_instance().initial_destination_connection_id = str(format(destination_id, 'x').zfill(16))
@@ -41,8 +44,9 @@ class QUIC :
         SessionInstance.get_instance().initial_source_connection_id = str(format(source_id, 'x').zfill(16))
 
         self.UDPClientSocket = socket.socket(family = socket.AF_INET, type =socket.SOCK_DGRAM)
+        self.UDPClientSocket.connect((ip, DPORT))
         dhke.set_up_my_keys()
-        self.UDPClientSocket.settimeout(1)
+        self.UDPClientSocket.settimeout(.5)
 
     def reset(self, reset_server, reset_run=True):
         if reset_run:
@@ -60,9 +64,6 @@ class QUIC :
             SessionInstance.get_instance().initial_source_connection_id = str(format(source_id, 'x').zfill(16))
 
             # PacketNumberInstance.get_instance().reset()
-            destination_id = random.getrandbits(64)
-            SessionInstance.get_instance().initial_destination_connection_id = str(format(destination_id, 'x').zfill(16))
-            SessionInstance.get_instance().client_initial_destination_connection_id =   SessionInstance.get_instance().initial_destination_connection_id
             PacketNumberInstance.get_instance().reset()
 
             SessionInstance.get_instance().public_values_bytes = ""
@@ -94,9 +95,8 @@ class QUIC :
         cryptoFrame = CryptoFrame() 
         crypto_frame = extract_from_packet_as_bytestring(cryptoFrame)
 
-        ClientHello = extract_from_packet_as_bytestring(CryptoFrame.TLSObject())
+        ClientHello = bytes.hex(CryptoFrame().TLSObject("localhost").data)
         SessionInstance.get_instance().tlschlo = bytes.fromhex(ClientHello)
-
         # padding
         padding = "00" * (775)
         
@@ -107,7 +107,7 @@ class QUIC :
         data =self.crypto.encrypt_initial_packet(plain_header,plain_payload,0)
       
         #send -> Initial[0] : crypato(CH)
-        self.UDPClientSocket.sendto(data, (ip, DPORT))
+        self.UDPClientSocket.send(data)
         pattern = b""
         try :
            
@@ -117,15 +117,17 @@ class QUIC :
             while hex_to_binary(bytes.hex(datarev_1[0:1]))[2:4] != "00" :
                 datarev_1 = self.UDPClientSocket.recv(1300) 
                 if(hex_to_binary(bytes.hex(datarev_1[0:1]))[2:4] == "00") : break 
-             
-            server_initial = datarev_1[:144]  #Initial[0] : crypato(SH)
-            server_handshake_1 = datarev_1[144:] #handshake[0] : crypato(EE)
-       
+                
+            server_initial = datarev_1 #Initial[0] : crypato(SH)
+        
             #server initial packet decrypat using initial traffic secret
-            plain_header, payload, packet_number = self.crypto.decrypt_initial_packet(server_initial)
-
+            
+            plain_header, temo_payload, packet_number = self.crypto.decrypt_initial_packet(server_initial)
+            payload = temo_payload[:100]
             sever_public_key = payload[-32:]
+            
             server_hello_data = payload[10:]
+            # print("server_hello_data",bytes.hex(server_hello_data))
             DCID = plain_header[6:14]
             SCID = plain_header[15:23]
 
@@ -136,12 +138,6 @@ class QUIC :
             
             dhke.shared_key_computation(sever_public_key)
             dhke.handshake_traffic_computation()
-
-            #handshake packet decrypation 
-            plain_header, payload, packet_number = self.crypto.decrypt_handshake_packet(server_handshake_1)
-        
-            PacketNumberInstance.get_instance().highest_received_packet_number = packet_number
-            PacketNumberInstance.get_instance().update_highest_received_packet_number(packet_number)    
             pattern += b"Server_Hello"
 
         except :  
@@ -153,31 +149,42 @@ class QUIC :
             Here handshake packet is in fragmentation  
             '''
             # receive -> handshake[0] : crypato(EE,CRT,CV,FIN)
-            server_handshake_2 = self.UDPClientSocket.recv(1300)
-            plain_header_sp, payload_sp, packet_number_sp =  self.crypto.decrypt_handshake_packet(server_handshake_2)
+            server_handshake_1 = self.UDPClientSocket.recv(1300)
+            self.cryptoContext.setup(cipher_suite = 0x1302, secret = SessionInstance.get_instance().server_handshake_traffic_secret, version = 1)
+            plain_header_sp, payload_sp, packet_number_sp,crypto = self.cryptoContext.decrypt_packet(server_handshake_1,25,1)
 
             PacketNumberInstance.get_instance().update_highest_received_packet_number(packet_number_sp)
 
-            SessionInstance.get_instance().crypto_extensions = payload[4:114]                    # EE
-            SessionInstance.get_instance().crypto_cert = payload[114:] + payload_sp[5:644]       # CERT
-            SessionInstance.get_instance().crypto_certverify = payload_sp[644:1036]              # CV       
-            SessionInstance.get_instance().crypto_finished = payload_sp[1036:]                   # FIN   
-            pattern += b"Handshake"
-
+            SessionInstance.get_instance().crypto_extensions = payload_sp[4:114]                    # EE
+            SessionInstance.get_instance().crypto_cert = payload_sp[114:]                         # CERT
+            # SessionInstance.get_instance().crypto_finished = payload_sp[1036:]                   # FIN   
         except:
-            print("handshake Packet not receive")
+            print("handshake Packet 1 not receive")
             return b"EXP"
 
         try :
             # receive -> 1-RTT[0] : appliction_data
-            appliction_data = self.UDPClientSocket.recv(1300) 
+            data = self.UDPClientSocket.recv(1300) 
+            handshake_data_2 = data[:987]
+            appliction_data = data[987:]
+
+            self.cryptoContext.setup(cipher_suite = 0x1302, secret = SessionInstance.get_instance().server_handshake_traffic_secret, version = 1)
+            plain_header_tp, payload_tp, packet_number_tp,crypto = self.cryptoContext.decrypt_packet(handshake_data_2,25,1)
+
+            SessionInstance.get_instance().crypto_cert += payload_tp[5:500]
+            SessionInstance.get_instance().crypto_certverify = payload_tp[500:892]
+            SessionInstance.get_instance().crypto_finished = payload_tp[892:]
+            pattern += b"+Handshake"
             dhke.appliction_traffic_computation()
-            plain_header_ap, payload_ap, packet_number_ap =  self.crypto.decrypt_application_packet(appliction_data)
+            self.cryptoContext.setup(cipher_suite = 0x1302, secret = SessionInstance.get_instance().server_appliction_traffic_secret, version = 1)
+            plain_header_ap, payload_ap, packet_number_ap,crypto =  self.cryptoContext.decrypt_packet(appliction_data,9,0)
             PacketNumberInstance.get_instance().update_highest_received_packet_number(packet_number_ap)
-            pattern += b"appliction_data"
+            pattern += b"+appliction_data"
             self.send_ACK()
+            self.send_handshake()
+            self.send_ACK_applictiondata()
         except:
-            print("appliction Packet not receive")
+            print("appliction Packet 2  not receive")
             return b"EXP"
         
         return pattern
@@ -189,58 +196,56 @@ class QUIC :
      
         # Long Header
         initial_client_ACK_header = QUICHeader.QUICHeader()
-
+        _packet_number = PacketNumberInstance.get_instance().get_next_packet_number()
         # set destination and source id in header
         initial_client_ACK_header.setfieldval("Public_Flags", 0xc1)
         initial_client_ACK_header.setfieldval("DCID",  string_to_ascii(SessionInstance.get_instance().initial_destination_connection_id)) 
         initial_client_ACK_header.setfieldval("SCID",  string_to_ascii(SessionInstance.get_instance().initial_source_connection_id))
-        initial_client_ACK_header.setfieldval("Length",bytes.fromhex("4018"))
-        initial_client_ACK_header.setfieldval("Packet_Number",256 * PacketNumberInstance.get_instance().get_next_packet_number())
-
+        initial_client_ACK_header.setfieldval("Length",bytes.fromhex("4496"))
+        initial_client_ACK_header.setfieldval("Packet_Number",256 * _packet_number)
+        initial_header = bytes.fromhex(extract_from_packet_as_bytestring(initial_client_ACK_header)) 
         #acknowledgement for Server Initial[0] 
         ackFrame = ACKFrame()
         ackFrame.setfieldval("Largest_Acknowledged",0)
-        ackFrame.setfieldval("ACK_delay",bytes.fromhex("42d3"))
-        initial_header = bytes.fromhex(extract_from_packet_as_bytestring(initial_client_ACK_header)) 
+        ackFrame.setfieldval("ACK_delay",bytes.fromhex("4059"))
         ACK_frame = extract_from_packet_as_bytestring(ackFrame)
-        initial_clinet_ACK = bytes.fromhex(ACK_frame)
+        padding = "00" * (1150)
+        initial_clinet_ACK = bytes.fromhex(ACK_frame + padding)
 
         #Initial ACK packet encrypt using initial traffic secret
-        initial_clinet_data = self.crypto.encrypt_initial_packet(initial_header,initial_clinet_ACK,1)
-
-        #handshake ACK packet
+       # initial_clinet_data = self.crypto.encrypt_initial_packet(initial_header,initial_clinet_ACK,_packet_number)
+        self.crypto_pair.setup_initial(string_to_ascii(SessionInstance.get_instance().client_initial_destination_connection_id ),True,1)
+        data = self.crypto_pair.encrypt_packet(initial_header,initial_clinet_ACK,_packet_number)
+        self.UDPClientSocket.send(data)
         
+    
+    def send_handshake(self) :
         # Long Header
         handshake_client_ACK_header = QUICHeader.QUICHandshakeHeader()
         # set destination and source id in header
         handshake_client_ACK_header.setfieldval("Public_Flags", 0xe1)
         handshake_client_ACK_header.setfieldval("DCID",  string_to_ascii(SessionInstance.get_instance().initial_destination_connection_id)) 
         handshake_client_ACK_header.setfieldval("SCID",  string_to_ascii(SessionInstance.get_instance().initial_source_connection_id))
-        handshake_client_ACK_header.setfieldval("Length",bytes.fromhex("40e1"))
+        handshake_client_ACK_header.setfieldval("Length",bytes.fromhex("4016"))
         handshake_client_ACK_header.setfieldval("Packet_Number",256* PacketNumberInstance.get_instance().get_next_packet_number())
 
-        #acknowledgement for Server handshake[0] 
+         #acknowledgement for Server handshake[0] 
         ackFrame_handshake = ACKFrame()
         ackFrame_handshake.setfieldval("Largest_Acknowledged",1)
-        ackFrame_handshake.setfieldval("ACK_delay",bytes.fromhex("42d3"))
+        ackFrame_handshake.setfieldval("ACK_delay",bytes.fromhex("407e"))
+        handshake_clinet_ACK = bytes.fromhex(extract_from_packet_as_bytestring(ackFrame_handshake))
 
-        #acknowledgement for Server handshake[0] 
-        _ackFrame_handshake = ACKFrame()
-        _ackFrame_handshake.setfieldval("Largest_Acknowledged",2)
-        _ackFrame_handshake.setfieldval("ACK_delay",bytes.fromhex("42d3"))
-
-        handshake_clinet_ACK = bytes.fromhex(extract_from_packet_as_bytestring(ackFrame_handshake) + extract_from_packet_as_bytestring(_ackFrame_handshake))
-        handshake_header = bytes.fromhex(extract_from_packet_as_bytestring(handshake_client_ACK_header))
-        handshake_clinet_data = self.crypto.encrypt_handshake_packet(handshake_header,handshake_clinet_ACK)
-
-        #send ACK Packet from client -> server 
-        self.UDPClientSocket.sendto((initial_clinet_data + handshake_clinet_data ) ,(ip, DPORT))
-
+        ackFrame_handshake.setfieldval("Largest_Acknowledged",2)
+        ackFrame_handshake.setfieldval("ACK_delay",bytes.fromhex("407e"))
+        handshake_clinet_ACK1 = bytes.fromhex(extract_from_packet_as_bytestring(ackFrame_handshake))
+        
+        handshake_client_data = self.crypto.encrypt_handshake_packet(bytes.fromhex(extract_from_packet_as_bytestring(handshake_client_ACK_header)),handshake_clinet_ACK + handshake_clinet_ACK1)
+        self.UDPClientSocket.send(handshake_client_data)
 
     
     def send_finish(self):
 
-        if SessionInstance.get_instance().handshake_done == True : return "ERROR" 
+        if SessionInstance.get_instance().handshake_done == True : return b"ERROR" 
         handshake_client_finish_header = QUICHeader.QUICHandshakeHeader()
         # set header data
         handshake_client_finish_header.setfieldval("Public_Flags", 0xe1)
@@ -263,9 +268,9 @@ class QUIC :
         _crypatoFrame = extract_from_packet_as_bytestring(cryptoFrame)
 
         finished_verify_data = dhke.finished_verify_data(0x1302,SessionInstance.get_instance().client_handshake_traffic_secret)
-        
         #finsh message 
-        tlsfinsh = TLSFinished(msglen = 48 , vdata = finished_verify_data)
+        tlsfinsh = TLSFinish()
+        tlsfinsh.setfieldval("vdata",bytes.fromhex(bytes.hex(finished_verify_data)))
         _tlsFinish = extract_from_packet_as_bytestring(tlsfinsh)
         data  = bytes.fromhex(_ackFrame + _crypatoFrame + _tlsFinish )
     
@@ -287,7 +292,6 @@ class QUIC :
             new_connection_id_data.setfieldval("CID" ,os.urandom(8))
             new_connection_id_data.setfieldval("Stateless_Reset_Token" ,os.urandom(16))
             _new_connection_id_data +=  bytes.fromhex(extract_from_packet_as_bytestring(new_connection_id_data))
-
 
 
         stream_data = bytes.fromhex("0004090150000710080121010d0108")
@@ -315,7 +319,7 @@ class QUIC :
         #encrypation using ap traffic secret
 
         appliction_clinet_data =  self.crypto.encrypt_application_packet(_haeader,data)
-        self.UDPClientSocket.sendto((handshake_clinet_data + appliction_clinet_data), (ip, DPORT))
+        self.UDPClientSocket.send(handshake_clinet_data + appliction_clinet_data)
         try :
             #1 - RTT[1]: [HD, Application Data]        
             recv_handshake_done = self.UDPClientSocket.recv(1200) # recive frist packet 4
@@ -355,7 +359,7 @@ class QUIC :
         ackFrame_appliction.setfieldval("First_ACK_Range",0)
         _ackFrame =  bytes.fromhex(extract_from_packet_as_bytestring(ackFrame_appliction))
         appliction_clinet_data =  self.crypto.encrypt_application_packet(_haeader,_ackFrame)
-        self.UDPClientSocket.sendto(appliction_clinet_data, (ip, DPORT))
+        self.UDPClientSocket.send(appliction_clinet_data)
         
     
     def Send_application_header(self):
@@ -385,28 +389,36 @@ class QUIC :
         data =  _stream_2 +_stream_1
         
         appliction_clinet_data = self.crypto.encrypt_application_packet(_haeader,data)
-        self.UDPClientSocket.sendto(appliction_clinet_data, (ip, DPORT))
+        self.UDPClientSocket.send(appliction_clinet_data)
 
         try :
             push_promise = self.UDPClientSocket.recv(1000)
             plain_header_ap, payload_ap, packet_number_ap = self.crypto.decrypt_application_packet(push_promise)
         except :
-            return b"EXP"  
+            pass
         
         try :
             Application_header = self.UDPClientSocket.recv(1000) 
             plain_header_ap, payload_ap, packet_number_ap = self.crypto.decrypt_application_packet(Application_header)
         except :
-            return b"EXP" 
+            pass
+        
+        try :
+            Application_header = self.UDPClientSocket.recv(1000) 
+            plain_header_ap, payload_ap, packet_number_ap = self.crypto.decrypt_application_packet(Application_header)
+        except :
+            pass
         
         pattern = b""
         try :
             html_page_1 = self.UDPClientSocket.recv(1300) 
             plain_header_ap, payload_ap, packet_number_ap = self.crypto.decrypt_application_packet(html_page_1)
-            if payload_ap.find(b"html") :
+            # print(payload_ap)
+            pattern_match = re.search(b"html", payload_ap)
+            if pattern_match:
                 pattern += b"html"
             else :
-                return "ERROR"
+                return b"EXP"
             PacketNumberInstance.get_instance().update_highest_received_packet_number(packet_number_ap)
         except : 
             print(" HTML Page 1 packet Not receive")
@@ -420,7 +432,7 @@ class QUIC :
 
         except : 
             print("HTML Page 2 packet Not receive")
-            return b"EXP"
+            # return b"EXP"
         
         return pattern
         
@@ -444,7 +456,7 @@ class QUIC :
         except:
             return b"EXP"
         
-        self.UDPClientSocket.sendto( appliction_clinet_data, (ip, DPORT))
+        self.UDPClientSocket.send(appliction_clinet_data)
 
        
     def send_ack_for_message_6(self):
@@ -467,7 +479,7 @@ class QUIC :
         except:
             return b"EXP"
         
-        self.UDPClientSocket.sendto( appliction_clinet_data, (ip, DPORT))
+        self.UDPClientSocket.send(appliction_clinet_data)
         
         try :
             push_promise = self.UDPClientSocket.recv(1000)
@@ -492,7 +504,7 @@ class QUIC :
             return b"EXP" 
         try :
             connection_close_data = self.crypto.encrypt_application_packet(_haeader,_connection_clodsed)
-            self.UDPClientSocket.sendto( connection_close_data,(ip, DPORT))
+            self.UDPClientSocket.send(connection_close_data)
             return b"closed"
         except :
             return b"EXP" 
@@ -516,9 +528,12 @@ class QUIC :
         except Exception as err:
             print("error")
 
+# from  Keylog import KeyFile
+# s = QUIC("localhost")
 
-s = QUIC("localhost")
-print(s.initial_chlo(True))
-print(s.send_finish())
-print(s.Send_application_header())
-print(s.connection_close())
+# print(s.initial_chlo(True))
+# KeyFile.FileGenret()
+# print(s.send_finish())
+# print(s.Send_application_header())
+# print(s.connection_close())
+# print(s.Send_application_header())

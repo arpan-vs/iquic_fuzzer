@@ -48,7 +48,7 @@ def main():
     quicServerBase = QUICServerKnowledgeBase(sys.argv[1], server)
     
     try:
-        eqTests = RandomWalkMethod(quicServerBase, input_vocabulary, 1, 0.75)
+        eqTests = RandomWalkMethod(quicServerBase, input_vocabulary, 1000, 0.75)
         lstar = LSTAR(input_vocabulary, quicServerBase, max_states = 10, eqtests = eqTests)
         starttime = time.time()
         quicServer_state_machine = lstar.learn()

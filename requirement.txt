@@ -3,3 +3,6 @@ cryptography
 scapy
 donna25519
 peewee
+pylstar
+pyopenssl
+qpack

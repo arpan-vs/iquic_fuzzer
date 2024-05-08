@@ -9,7 +9,6 @@ from utils.SessionInstance import SessionInstance
 from utils.packet_to_hex import  extract_from_packet, extract_from_packet_as_bytestring, hex_to_binary,hex_to_decimal
 from typing import Callable, Optional, Tuple
 from aioquic.quic.crypto import hkdf_extract,hkdf_expand_label,cipher_suite_hash , CipherSuite
-from donna25519 import PrivateKey, PublicKey
 from cryptography.hazmat.primitives import hashes, hmac, serialization
 import binascii
 
@@ -33,7 +32,7 @@ class dhke:
         SessionInstance.get_instance().private_value = _x25519_private_key
     
     def shared_key_computation(server_public_key : bytes ) :
-        private_key = SessionInstance.get_instance().private_value  # client private key 
+        private_key = SessionInstance.get_instance()._x25519_private_key   # client private key 
         shared_key = private_key.exchange(x25519.X25519PublicKey.from_public_bytes(server_public_key)) 
         SessionInstance.get_instance().shared_key = shared_key 
         # print("SessionInstance.get_instance().shared_key",bytes.hex(SessionInstance.get_instance().shared_key))

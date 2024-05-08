@@ -13,6 +13,10 @@ class SessionInstance:
     private_value = None
     client_initial_destination_connection_id = ""
     shared_key = b''
+    _ec_private_key = ""
+    _x25519_private_key = ""
+    _x448_private_key = ""
+    configuration = None
     chlo = ""
     shlo = ""
     tlschlo= b''

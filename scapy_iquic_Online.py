@@ -8,10 +8,10 @@ from utils.SessionInstance import SessionInstance
 from utils.PacketNumberInstance import PacketNumberInstance
 from aioquic.quic.crypto import CryptoContext,CryptoPair
 from crypto.Secret import dhke, Crypto
-from CryptoFrame import CryptoFrame, ACKFrame, ACKFrameModify
+from CryptoFrame import CryptoFrame, ACKFrame, ACKFrameModify,TLSFinish
 from events.Events import SendInitialCHLOEvent, SendGETRequestEvent, CloseConnectionEvent,SendFINEvent
 
-from scapy.layers.tls.handshake import TLSFinished
+# from scapy.layers.tls.handshake import TLSFinished
 
 from crypto.Frame import new_connection_id, quic_stream, quic_offset_stream ,quic_connection_closed
 import os
@@ -25,7 +25,7 @@ from  Keylog import KeyFile
 # ip ="127.0.0.1"
 
 DPORT = 443
-ip ="34.247.195.106"
+ip ="quic.aiortc.org"
 class QUIC : 
 
     Largest_Acked = 0
@@ -103,7 +103,7 @@ class QUIC :
         cryptoFrame.setfieldval("Length",bytes.fromhex("417f"))
         crypto_frame = extract_from_packet_as_bytestring(cryptoFrame)
 
-        ClientHello = extract_from_packet_as_bytestring(CryptoFrame.TLSObjectOnline())
+        ClientHello = bytes.hex(CryptoFrame().TLSObject(server_name=ip).data)
         SessionInstance.get_instance().tlschlo = bytes.fromhex(ClientHello)
 
         # padding
@@ -197,7 +197,7 @@ class QUIC :
             pattern += b"appliction_data"
         except:
             print("appliction Packet not receive")
-            return b"EXP"
+            # return b"EXP"
         return pattern
     
 
@@ -343,9 +343,10 @@ class QUIC :
         _crypatoFrame = extract_from_packet_as_bytestring(cryptoFrame)
 
         finished_verify_data = dhke.finished_verify_data(0x1302,SessionInstance.get_instance().client_handshake_traffic_secret)
-        
-        #finsh message 
-        tlsfinsh = TLSFinished(msglen = 48 , vdata = finished_verify_data)
+    
+
+        tlsfinsh = TLSFinish()
+        tlsfinsh.setfieldval("vdata",bytes.fromhex(bytes.hex(finished_verify_data)))
         _tlsFinish = extract_from_packet_as_bytestring(tlsfinsh)
         data  = bytes.fromhex(_ackFrame + _crypatoFrame + _tlsFinish )
     
@@ -681,10 +682,10 @@ class QUIC :
             print("error")
 
 
-# s = QUIC("quic.aiortc.org")
+s = QUIC("quic.aiortc.org")
+print(s.initial_chlo(True))
 # print(s.initial_chlo(True))
-# print(s.initial_chlo(True))
-# KeyFile.FileGenret()
+KeyFile.FileGenret()
 # print(s.send_finish())
 # # print(s.Send_application_header())
 # print(s.Send_application_header_2())
