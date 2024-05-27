@@ -1,0 +1,45 @@
+digraph "Automata" {
+"0" [shape=doubleoctagon, style=filled, fillcolor=white, URL="0"];
+"1" [shape=ellipse, style=filled, fillcolor=white, URL="1"];
+"2" [shape=ellipse, style=filled, fillcolor=white, URL="2"];
+"3" [shape=ellipse, style=filled, fillcolor=white, URL="3"];
+"0" -> "1" [fontsize=5, label="Clinet_Hello / Server_Hello+Handshake+appliction_data", URL="t0"];
+"0" -> "0" [fontsize=5, label="Clinet_FIN / EXP", URL="t1"];
+"0" -> "0" [fontsize=5, label="GET / EXP", URL="t2"];
+"0" -> "0" [fontsize=5, label="CLOSE / EXP", URL="t3"];
+"0" -> "0" [fontsize=5, label="Invalid_Clinet_Hello / EXP", URL="t4"];
+"0" -> "0" [fontsize=5, label="Invalid_Clinet_FIN / EXP", URL="t5"];
+"0" -> "0" [fontsize=5, label="Invalid_GET / EXP", URL="t6"];
+"1" -> "0" [fontsize=5, label="Clinet_Hello / Server_Hello+Handshake+appliction_data", URL="t7"];
+"1" -> "2" [fontsize=5, label="Clinet_FIN / handshakedone", URL="t8"];
+"1" -> "1" [fontsize=5, label="GET / EXP", URL="t9"];
+"1" -> "1" [fontsize=5, label="CLOSE / EXP", URL="t10"];
+"1" -> "0" [fontsize=5, label="Invalid_Clinet_Hello / EXP", URL="t11"];
+"1" -> "0" [fontsize=5, label="Invalid_Clinet_FIN / EXP", URL="t12"];
+"1" -> "1" [fontsize=5, label="Invalid_GET / EXP", URL="t13"];
+"2" -> "1" [fontsize=5, label="Clinet_Hello / Server_Hello+Handshake+appliction_data", URL="t14"];
+"2" -> "2" [fontsize=5, label="Clinet_FIN / ERROR", URL="t15"];
+"2" -> "3" [fontsize=5, label="GET / HTTP", URL="t16"];
+"2" -> "2" [fontsize=5, label="CLOSE / CLOSED", URL="t17"];
+"2" -> "0" [fontsize=5, label="Invalid_Clinet_Hello / EXP", URL="t18"];
+"2" -> "2" [fontsize=5, label="Invalid_Clinet_FIN / ERROR", URL="t19"];
+"2" -> "3" [fontsize=5, label="Invalid_GET / EXP", URL="t20"];
+"3" -> "1" [fontsize=5, label="Clinet_Hello / Server_Hello+Handshake+appliction_data", URL="t21"];
+"3" -> "3" [fontsize=5, label="Clinet_FIN / ERROR", URL="t22"];
+"3" -> "3" [fontsize=5, label="GET / EXP", URL="t23"];
+"3" -> "3" [fontsize=5, label="CLOSE / CLOSED", URL="t24"];
+"3" -> "0" [fontsize=5, label="Invalid_Clinet_Hello / EXP", URL="t25"];
+"3" -> "3" [fontsize=5, label="Invalid_Clinet_FIN / ERROR", URL="t26"];
+"3" -> "3" [fontsize=5, label="Invalid_GET / EXP", URL="t27"];
+}
+
+
+==> QUIC machine Automata dumped in local_invalid.dot
+
+Knowledge base stats: 
+	- nb query= 651
+	- nb submited query= 283
+	- nb letter= 1754
+	- nb submited letter= 980
+
+==> Taken Time:708.6162140369415

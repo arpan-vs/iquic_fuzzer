@@ -59,7 +59,7 @@ class FuzzTesting:
             self.socket.sendto(b"test case "+ str(i).encode(), (self.UDP_IP, self.UDP_PORT))
             print(b"test case "+ str(i).encode())
             # time.sleep(.5)
-            self.client = QUIC("localhost")
+            self.client = QUIC("localhost", True)
             
             for j in range(walkLength):
                 input = self.randomStep(currentState)
@@ -113,6 +113,7 @@ class FuzzTesting:
             # print("input : ",inputs[:j+1])
             # print("Mod output : ", Model_outputs[:j+1])
             # print("SUT output : ", SUT_outputs)
+            time.sleep(10)
             print()
             PacketNumberInstance.get_instance().reset()
             SessionInstance.reset()
@@ -146,7 +147,7 @@ class FuzzTesting:
 
 # FuzzTesting('dot/localhost_43_invalid_0RTT.dot').randomWalkWithFuzzing(100,10)
 starttime = time.time()
-FuzzTesting('localhost_QUIC.dot').randomWalkWithFuzzing(100,10)
+FuzzTesting('local_invalid.dot').randomWalkWithFuzzing(50,5)
 endtime = time.time()
 
 print("\n\n\n==> Taken Time:" +  str(endtime - starttime))

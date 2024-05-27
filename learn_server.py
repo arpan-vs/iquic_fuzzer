@@ -42,6 +42,9 @@ def main():
         "Clinet_FIN",
         "GET",
         "CLOSE",
+        "Invalid_Clinet_Hello",
+        "Invalid_Clinet_FIN",
+        "Invalid_GET",
     ]
 
 

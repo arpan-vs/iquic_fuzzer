@@ -14,6 +14,12 @@ def QuicInputMapper(alphabet, s):
             x = s.send(CloseConnectionEvent())
         case "Clinet_FIN":
             x = s.send(SendFINEvent())
+        case "Invalid_Clinet_Hello":
+            x = s.send(SendInvalidInitialCHLOEvent())
+        case "Invalid_GET":
+            x = s.send(SendInvalidGETRequestEvent())
+        case "Invalid_Clinet_FIN":
+            x = s.send(SendInvalidFINEvent())
         case default:
             pass
     return x

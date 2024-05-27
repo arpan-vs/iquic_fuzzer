@@ -9,7 +9,7 @@ from utils.SessionInstance import SessionInstance
 from utils.PacketNumberInstance import PacketNumberInstance
 from crypto.Secret import dhke, Crypto
 from CryptoFrame import CryptoFrame ,ACKFrame,ACKFrameModify,TLSFinish
-from events.Events import SendInitialCHLOEvent, SendGETRequestEvent, CloseConnectionEvent,SendFINEvent
+from events.Events import *
 
 # from scapy.layers.tls.handshake import TLSFinished
 from crypto.Frame import new_connection_id, quic_stream, quic_offset_stream ,quic_connection_closed
@@ -29,8 +29,9 @@ class QUIC :
 
     Largest_Acked = 0
 
-    def __init__(self,s) -> None:
+    def __init__(self, s, fuzz = False) -> None:
 
+        self.fuzz = fuzz
         self.crypto = Crypto()
         self.cryptoContext = CryptoContext()
         self.crypto_pair = CryptoPair()   
@@ -46,7 +47,7 @@ class QUIC :
         self.UDPClientSocket = socket.socket(family = socket.AF_INET, type =socket.SOCK_DGRAM)
         self.UDPClientSocket.connect((ip, DPORT))
         dhke.set_up_my_keys()
-        self.UDPClientSocket.settimeout(.5)
+        self.UDPClientSocket.settimeout(1)
 
     def reset(self, reset_server, reset_run=True):
         if reset_run:
@@ -79,7 +80,7 @@ class QUIC :
             dhke.set_up_my_keys()
 
 
-    def initial_chlo(self, only_reset):
+    def initial_chlo(self, only_reset, InvalidPacket = False):
 
         self.reset(only_reset)
 
@@ -96,6 +97,17 @@ class QUIC :
         crypto_frame = extract_from_packet_as_bytestring(cryptoFrame)
 
         ClientHello = bytes.hex(CryptoFrame().TLSObject("localhost").data)
+
+        if InvalidPacket and not self.fuzz:
+            ClientHello = bytearray.fromhex(ClientHello)
+            ClientHello[3] = 0
+            ClientHello = ClientHello.hex()
+        elif InvalidPacket and self.fuzz:
+            ClientHello = bytearray.fromhex(ClientHello)
+            index = random.randrange(0, len(ClientHello))
+            ClientHello[index] = random.randrange(0, 255)
+            ClientHello = ClientHello.hex()
+
         SessionInstance.get_instance().tlschlo = bytes.fromhex(ClientHello)
         # padding
         padding = "00" * (775)
@@ -243,7 +255,7 @@ class QUIC :
         self.UDPClientSocket.send(handshake_client_data)
 
     
-    def send_finish(self):
+    def send_finish(self, InvalidPacket = False):
 
         if SessionInstance.get_instance().handshake_done == True : return b"ERROR" 
         handshake_client_finish_header = QUICHeader.QUICHandshakeHeader()
@@ -271,7 +283,20 @@ class QUIC :
         #finsh message 
         tlsfinsh = TLSFinish()
         tlsfinsh.setfieldval("vdata",bytes.fromhex(bytes.hex(finished_verify_data)))
+        
+        
         _tlsFinish = extract_from_packet_as_bytestring(tlsfinsh)
+        if InvalidPacket and not self.fuzz:   
+            tlsfinsh.setfieldval("Length",bytes.fromhex("000010"))
+            _tlsFinish = extract_from_packet_as_bytestring(tlsfinsh)
+
+        elif InvalidPacket and self.fuzz:
+            _tlsFinish = extract_from_packet_as_bytestring(tlsfinsh)
+            _tlsFinish = bytearray.fromhex(_tlsFinish)
+            index = random.randrange(0, len(_tlsFinish))
+            _tlsFinish[index] = random.randrange(0, 255)
+            _tlsFinish = _tlsFinish.hex()
+            
         data  = bytes.fromhex(_ackFrame + _crypatoFrame + _tlsFinish )
     
         handshake_clinet_data =self.crypto.encrypt_handshake_packet(_handshake_client_ACK_header,data)
@@ -362,7 +387,7 @@ class QUIC :
         self.UDPClientSocket.send(appliction_clinet_data)
         
     
-    def Send_application_header(self):
+    def Send_application_header(self, InvalidPacket = False):
         haeader = QUICHeader.QUICShortHeader()
         packet_number = PacketNumberInstance.get_instance().get_next_packet_number()
         haeader.setfieldval("Public_Flags",0x61)
@@ -384,7 +409,21 @@ class QUIC :
         stream_1.setfieldval("stream_id",0)
         stream_1.setfieldval("Length",bytes.fromhex("4020"))
         stream_1.setfieldval("Data",stream_data)
+
+        
         _stream_1 = bytes.fromhex(extract_from_packet_as_bytestring(stream_1))
+        if InvalidPacket and not self.fuzz:  
+            stream_1.setfieldval("Length",bytes.fromhex("4010"))
+            _stream_1 = bytes.fromhex(extract_from_packet_as_bytestring(stream_1))
+
+        elif InvalidPacket and self.fuzz:
+            _stream_1 = bytes.fromhex(extract_from_packet_as_bytestring(stream_1))
+            _stream_1 = extract_from_packet_as_bytestring(_stream_1)
+            _stream_1 = bytearray.fromhex(_stream_1)
+            index = random.randrange(0, len(_stream_1))
+            _stream_1[index] = random.randrange(0, 255)
+            _stream_1 = _stream_1.hex()
+            
 
         data =  _stream_2 +_stream_1
         
@@ -492,7 +531,7 @@ class QUIC :
     def connection_close(self) :
         haeader = QUICHeader.QUICShortHeader()
         packet_number = PacketNumberInstance.get_instance().get_next_packet_number()
-        haeader.setfieldval("Public_Flags",0x61)
+        haeader.setfieldval("Public_Flags",0x60)
         haeader.setfieldval("DCID",  string_to_ascii(SessionInstance.get_instance().initial_destination_connection_id)) 
         haeader.setfieldval("Packet_Number",string_to_ascii(bytes.hex(packet_number.to_bytes(2, byteorder='big'))))
         _haeader =  bytes.fromhex(extract_from_packet_as_bytestring(haeader))
@@ -520,6 +559,15 @@ class QUIC :
             elif isinstance(command, SendGETRequestEvent):
                 print("Sending GET")
                 return self.Send_application_header()
+            elif isinstance(command, SendInvalidInitialCHLOEvent):
+                print("Sending Invalid InitialCHLO")
+                return self.initial_chlo(True, InvalidPacket=True)
+            elif isinstance(command, SendInvalidFINEvent):
+                print("Sending Invalid FIN")
+                return self.send_finish(InvalidPacket=True)
+            elif isinstance(command, SendInvalidGETRequestEvent):
+                print("Sending Invalid GET")
+                return self.Send_application_header(InvalidPacket=True)
             elif isinstance(command, CloseConnectionEvent):
                 print("Closing connection")
                 return self.connection_close()
@@ -532,8 +580,10 @@ class QUIC :
 # s = QUIC("localhost")
 
 # print(s.initial_chlo(True))
+# print(s.initial_chlo(True, InvalidPacket=True))
+# print(s.initial_chlo(True))
 # KeyFile.FileGenret()
 # print(s.send_finish())
-# print(s.Send_application_header())
+# print(s.Send_application_header(InvalidPacket=True))
 # print(s.connection_close())
 # print(s.Send_application_header())

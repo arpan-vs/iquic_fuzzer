@@ -72,7 +72,7 @@ class QUICServerKnowledgeBase(ActiveKnowledgeBase):
         finally:
             # s.send(CloseConnectionEvent())
             del s
-            time.sleep(1)
+            time.sleep(2)
             self._i+=1
             PacketNumberInstance.get_instance().reset()
             SessionInstance.reset()

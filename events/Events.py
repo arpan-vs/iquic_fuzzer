@@ -10,3 +10,11 @@ class SendFINEvent:
 class CloseConnectionEvent:
     pass
 
+class SendInvalidInitialCHLOEvent:
+    pass
+
+class SendInvalidGETRequestEvent:
+    pass
+
+class SendInvalidFINEvent:
+    pass
